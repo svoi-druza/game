@@ -530,27 +530,25 @@ setTimeout(() => {
 }, 100);
   // Логика кнопки доната
 document.getElementById('donateBtn').addEventListener('click', () => {
-  console.log("Объект Telegram:", window.Telegram);
-// ДИАГНОСТИКА
-let diagText = "Telegram: " + (window.Telegram ? "Есть" : "Нет") + "\n";
-if (window.Telegram && window.Telegram.WebApp) {
-    const tg = window.Telegram.WebApp;
-    diagText += "WebApp: Есть\n";
-    diagText += "initData: " + (tg.initData ? "Есть" : "Пусто") + "\n";
-    diagText += "User: " + (tg.initDataUnsafe?.user ? "Есть" : "Нет") + "\n";
-    diagText += "Version: " + tg.version + "\n";
-    diagText += "Platform: " + tg.platform;
-} else {
-    diagText += "WebApp: НЕТ (скрипт не загрузился)";
-}
-alert(diagText);
   const tg = window.Telegram?.WebApp;
- if (!tg) {
-    alert('Telegram WebApp не найден. Откройте игру через кнопку меню бота.');
+  
+  if (!tg) {
+    alert('ОШИБКА: Telegram WebApp не найден!');
     return;
-}
+  }
 
-  const userId = tg.initDataUnsafe?.user?.id || 0; // Берем ID, если есть, иначе 0
+  // Выводим данные, которые передал Telegram
+  const userData = tg.initDataUnsafe?.user;
+  
+  if (userData) {
+    alert('УСПЕХ! Ваш ID: ' + userData.id);
+  } else {
+    alert('Telegram есть, но данные пользователя пустые!');
+    return;
+  }
+
+  // Отправляем запрос на сервер (это сработает, только если есть ID)
+  const userId = userData.id;
 
   fetch('https://cosmo-bot-hml.onrender.com/api/buy', {
     method: 'POST',
@@ -562,10 +560,10 @@ alert(diagText);
     if (data.ok) {
       tg.showAlert('Счет выставлен! Проверьте чат с ботом.');
     } else {
-      tg.showAlert('Ошибка: ' + data.description);
+      tg.showAlert('Ошибка сервера: ' + data.description);
     }
   })
-  .catch(() => tg.showAlert('Ошибка сервера. Попробуйте позже.'));
+  .catch(() => tg.showAlert('Сервер не отвечает.'));
 });
 </script>
 </body>
