@@ -549,7 +549,7 @@ document.getElementById('donateBtn').addEventListener('click', () => {
   // Отправляем запрос на сервер (это сработает, только если есть ID)
   const userId = userData.id;
 
-  fetch('https://cosmo-bot-hml.onrender.com/api/buy', {
+  fetch('https://cosmo-bot-bwnl.onrender.com/api/buy', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ userId: userId })
