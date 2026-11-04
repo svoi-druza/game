@@ -562,7 +562,7 @@ document.getElementById('donateBtn').addEventListener('click', () => {
       tg.showAlert('Ошибка сервера: ' + data.description);
     }
   })
-  .catch(() => tg.showAlert('Сервер не отвечает.'));
+  .catch((error) => tg.showAlert('ОШИБКА: ' + error.message));
 });
 </script>
 </body>
