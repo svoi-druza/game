@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>🚀 Космо-Кликер</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; background: #000010; color: #fff; touch-action: manipulation; }
+#game { position: relative; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; overflow: hidden; }
+#bg-layer { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
+#ui-layer { position: relative; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; width: 100%; height: 100%; padding: 20px; overflow-y: auto; }
+.hidden { display: none !important; }
+.no-events { pointer-events: none; }
+
+/* ЧАСТЬ 2: ФОН */
+.nebula { position: absolute; border-radius: 50%; filter: blur(60px); opacity: 0.35; animation: nebulaDrift 30s ease-in-out infinite alternate; }
+@keyframes nebulaDrift { 0% { transform: translate(0, 0) scale(1); } 100% { transform: translate(40px, -30px) scale(1.2); } }
+.star-dot { position: absolute; background: #fff; border-radius: 50%; animation: starTwinkle 2s ease-in-out infinite; will-change: opacity, transform; }
+@keyframes starTwinkle { 0%, 100% { opacity: 0.15; transform: scale(1); } 50% { opacity: 1; transform: scale(1.4); } }
+.shooting-star { position: absolute; width: 120px; height: 2px; background: linear-gradient(90deg, #fff, transparent); border-radius: 2px; opacity: 0; animation: shoot 1.2s linear forwards; filter: drop-shadow(0 0 6px #fff); }
+@keyframes shoot { 0% { opacity: 0; transform: translate(0,0) rotate(-35deg); } 20% { opacity: 1; } 100% { opacity: 0; transform: translate(400px, 280px) rotate(-35deg); } }
+
+/* ЧАСТЬ 3: ЭФФЕКТЫ */
+.particle { position: fixed; border-radius: 50%; pointer-events: none; z-index: 100; will-change: transform, opacity; }
+.float-number { position: fixed; font-weight: 900; font-size: 1.6rem; color: #00ffaa; text-shadow: 0 0 12px #00ffaa, 0 0 24px #00ffaa88; pointer-events: none; z-index: 101; animation: floatUpNum 1s cubic-bezier(.2,.8,.3,1) forwards; white-space: nowrap; }
+.float-number.crit { color: #ffcc00; font-size: 2.2rem; text-shadow: 0 0 15px #ffcc00, 0 0 35px #ff8800; }
+@keyframes floatUpNum { 0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); } 15% { opacity: 1; transform: translate(-50%, -60%) scale(1.15); } 100% { opacity: 0; transform: translate(-50%, -180%) scale(1); } }
+@keyframes screenShake { 0%, 100% { transform: translate(0, 0); } 25% { transform: translate(-3px, 2px); } 50% { transform: translate(3px, -2px); } 75% { transform: translate(-2px, -1px); } }
+.shake { animation: screenShake 0.18s ease-in-out; }
+.click-ring { position: fixed; border: 2px solid #00e5ff; border-radius: 50%; pointer-events: none; z-index: 99; transform: translate(-50%, -50%); animation: ringExpand 0.55s ease-out forwards; }
+@keyframes ringExpand { 0% { width: 0; height: 0; opacity: 1; border-width: 3px; } 100% { width: 180px; height: 180px; opacity: 0; border-width: 1px; } }
+
+/* ЧАСТЬ 4: HUD */
+#hud { position: relative; z-index: 20; width: 100%; max-width: 480px; padding: 12px 16px 0; display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; }
+#hud * { pointer-events: auto; }
+.score-block { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+#scoreValue { font-size: 2.8rem; font-weight: 900; letter-spacing: 1px; color: #00e5ff; text-shadow: 0 0 20px #00e5ff, 0 0 40px #00e5ff88; line-height: 1; transition: transform 0.1s; font-variant-numeric: tabular-nums; }
+#scoreValue.bump { transform: scale(1.12); }
+.score-label { font-size: 0.7rem; letter-spacing: 3px; color: #8899aa; text-transform: uppercase; }
+#cpsLine { font-size: 1rem; color: #ff9f00; text-shadow: 0 0 10px #ff9f0088; font-weight: 700; }
+#progressWrap { width: 100%; height: 8px; background: #ffffff14; border-radius: 4px; overflow: hidden; margin-top: 4px; border: 1px solid #ffffff22; }
+#progressBar { height: 100%; width: 0%; background: linear-gradient(90deg, #00e5ff, #ff00e5); border-radius: 4px; transition: width 0.3s ease-out; box-shadow: 0 0 12px #00e5ff; }
+#progressText { font-size: 0.65rem; color: #8899aa; margin-top: 2px; letter-spacing: 1px; }
+#miniStats { display: flex; gap: 16px; font-size: 0.7rem; color: #667788; letter-spacing: 1px; }
+#miniStats b { color: #aabbcc; }
+
+/* ЧАСТЬ 5: ПЛАНЕТА */
+#planetWrap { position: relative; z-index: 15; display: flex; align-items: center; justify-content: center; margin: 20px 0; width: 220px; height: 220px; flex-shrink: 0; }
+#planet { position: relative; width: 170px; height: 170px; border-radius: 50%; cursor: pointer; background: radial-gradient(circle at 35% 30%, #ffd08a 0%, #ffb347 25%, #ff5e00 55%, #8b0000 100%); box-shadow: 0 0 60px #ff5e0099, 0 0 120px #ff5e0055, inset -18px -18px 50px rgba(0,0,0,.65), inset 10px 10px 30px rgba(255,220,150,.35); transition: transform 0.08s ease-out; animation: planetIdle 4s ease-in-out infinite; will-change: transform; }
+@keyframes planetIdle { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.03); } }
+#planet:active { transform: scale(0.92); }
+#planet.crit-flash { animation: critFlash 0.35s ease-out; }
+@keyframes critFlash { 0% { filter: brightness(2) hue-rotate(30deg); transform: scale(1.15); } 100% { filter: brightness(1); transform: scale(1); } }
+#planet::before { content: ''; position: absolute; inset: -22px; border-radius: 50%; border: 3px solid rgba(0, 229, 255, 0.45); transform: rotateX(72deg) rotateZ(-18deg); pointer-events: none; box-shadow: 0 0 25px #00e5ff88; animation: ringSpin 12s linear infinite; }
+@keyframes ringSpin { from { transform: rotateX(72deg) rotateZ(-18deg) rotate(0deg); } to { transform: rotateX(72deg) rotateZ(-18deg) rotate(360deg); } }
+#planet::after { content: ''; position: absolute; inset: -8px; border-radius: 50%; background: radial-gradient(circle, transparent 60%, #ff9f0055 100%); pointer-events: none; animation: atmoPulse 2.5s ease-in-out infinite; }
+@keyframes atmoPulse { 0%, 100% { opacity: 0.5; transform: scale(1); } 50% { opacity: 0.9; transform: scale(1.05); } }
+#comboBadge { position: absolute; top: -10px; right: -10px; background: linear-gradient(135deg, #ff00e5, #ff5e00); color: #fff; font-weight: 900; font-size: 0.9rem; padding: 6px 12px; border-radius: 20px; box-shadow: 0 0 20px #ff00e5aa; transform: scale(0); transition: transform 0.2s cubic-bezier(.3,1.6,.5,1); z-index: 5; pointer-events: none; }
+#comboBadge.show { transform: scale(1); }
+#comboBadge.pulse { animation: comboPulse 0.3s; }
+@keyframes comboPulse { 50% { transform: scale(1.25); } }
+#tapHint { position: absolute; bottom: -30px; left: 50%; transform: translateX(-50%); font-size: 0.8rem; color: #00e5ff; letter-spacing: 3px; white-space: nowrap; animation: hintPulse 1.6s ease-in-out infinite; pointer-events: none; }
+@keyframes hintPulse { 0%, 100% { opacity: 0.4; transform: translateX(-50%) translateY(0); } 50% { opacity: 1; transform: translateX(-50%) translateY(-4px); } }
+
+/* ЧАСТЬ 6: МАГАЗИН */
+#shop { position: relative; z-index: 15; width: 100%; max-width: 480px; margin-top: 10px; padding: 0 12px 20px; display: flex; flex-direction: column; gap: 8px; max-height: 44vh; overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; scrollbar-color: #00e5ff44 transparent; }
+#shop::-webkit-scrollbar { width: 6px; }
+#shop::-webkit-scrollbar-thumb { background: #00e5ff44; border-radius: 3px; }
+.shop-title { font-size: 0.7rem; letter-spacing: 3px; color: #667788; text-transform: uppercase; margin: 8px 0 4px; text-align: center; }
+.upg-card { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: linear-gradient(135deg, #1a0a2e, #0a0018); border: 1px solid #ffffff18; border-radius: 14px; cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden; }
+.upg-card::before { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, #ffffff0a, transparent); transform: translateX(-100%); transition: transform 0.6s; }
+.upg-card:hover::before { transform: translateX(100%); }
+.upg-card.affordable { border-color: #00e5ff88; box-shadow: 0 0 20px #00e5ff22, inset 0 0 20px #00e5ff0a; }
+.upg-card.affordable:hover { border-color: #00e5ff; transform: translateY(-1px); box-shadow: 0 0 30px #00e5ff44; }
+.upg-card.locked { opacity: 0.45; cursor: not-allowed; }
+.upg-card.bought-flash { animation: buyFlash 0.4s; }
+@keyframes buyFlash { 50% { background: #00e5ff33; transform: scale(1.02); } }
+.upg-card[data-rarity="common"] { border-left: 4px solid #8899aa; }
+.upg-card[data-rarity="rare"] { border-left: 4px solid #00e5ff; }
+.upg-card[data-rarity="epic"] { border-left: 4px solid #a020f0; }
+.upg-card[data-rarity="legendary"] { border-left: 4px solid #ffcc00; }
+.upg-icon { font-size: 1.8rem; width: 42px; text-align: center; filter: drop-shadow(0 0 8px currentColor); flex-shrink: 0; }
+.upg-info { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.upg-name { font-size: 0.95rem; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.upg-desc { font-size: 0.7rem; color: #8899aa; }
+.upg-owned { font-size: 0.7rem; color: #00ffaa; font-weight: 700; }
+.upg-price { font-size: 0.85rem; font-weight: 900; color: #ffcc00; text-shadow: 0 0 8px #ffcc0066; white-space: nowrap; text-align: right; flex-shrink: 0; }
+.upg-price.cant { color: #ff4444; text-shadow: 0 0 8px #ff444466; }
+
+/* ЧАСТЬ 7: ДОСТИЖЕНИЯ */
+#achToast { position: fixed; top: 16px; left: 50%; transform: translate(-50%, -120px); background: linear-gradient(135deg, #ffcc00, #ff8800); color: #1a0a00; padding: 14px 22px; border-radius: 14px; font-weight: 900; z-index: 500; box-shadow: 0 8px 40px #ffcc0088, 0 0 60px #ff880066; display: flex; align-items: center; gap: 12px; transition: transform 0.5s cubic-bezier(.3,1.4,.5,1); max-width: 92vw; pointer-events: none; }
+#achToast.show { transform: translate(-50%, 0); }
+#achToast .toast-icon { font-size: 2rem; filter: drop-shadow(0 2px 4px rgba(0,0,0,.3)); }
+#achToast .toast-body { display: flex; flex-direction: column; gap: 2px; }
+#achToast .toast-title { font-size: 0.65rem; letter-spacing: 2px; opacity: 0.8; }
+#achToast .toast-name { font-size: 1.05rem; }
+#achCounter { position: fixed; top: 10px; right: 12px; z-index: 20; background: #ffcc0022; border: 1px solid #ffcc0066; color: #ffcc00; padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 700; letter-spacing: 1px; pointer-events: none; }
+</style>
+</head>
+<body>
+<div id="game">
+  <div id="bg-layer"></div>
+  <div id="ui-layer">
+    <div id="achCounter">🏆 0/12</div>
+    <div id="hud">
+      <div class="score-block">
+        <div class="score-label">Космическая энергия</div>
+        <div id="scoreValue">0</div>
+        <div id="cpsLine">0 / сек</div>
+      </div>
+      <div id="progressWrap"><div id="progressBar"></div></div>
+      <div id="progressText">до рубежа</div>
+      <div id="miniStats">
+        <span>Всего: <b id="statTotal">0</b></span>
+        <span>Кликов: <b id="statClicks">0</b></span>
+      </div>
+    </div>
+    <div id="planetWrap">
+      <div id="planet"></div>
+      <div id="comboBadge">×2</div>
+      <div id="tapHint">▼ ТАПАЙ ▼</div>
+    </div>
+    <div id="shop">
+      <div class="shop-title">⚡ Апгрейды</div>
+    </div>
+  </div>
+</div>
+
+<div id="achToast">
+  <div class="toast-icon">🏆</div>
+  <div class="toast-body">
+    <div class="toast-title">ДОСТИЖЕНИЕ!</div>
+    <div class="toast-name" id="achToastName">—</div>
+  </div>
+</div>
+
+<script>
+// ============ ЯДРО ============
+const Game = { score: 0, totalScore: 0, clickPower: 1, cps: 0, upgrades: [], achievements: [], soundOn: true, particlesOn: true, initialized: false, _clicks: 0, _maxCombo: 1 };
+
+function formatNum(n) {
+  if (n >= 1e15) return (n/1e15).toFixed(2) + 'Qa';
+  if (n >= 1e12) return (n/1e12).toFixed(2) + 'T';
+  if (n >= 1e9)  return (n/1e9).toFixed(2)  + 'млрд';
+  if (n >= 1e6)  return (n/1e6).toFixed(2)  + 'млн';
+  if (n >= 1e3)  return (n/1e3).toFixed(1)  + 'к';
+  return Math.floor(n).toString();
+}
+
+const EventBus = {
+  listeners: {},
+  on(evt, fn) { (this.listeners[evt] = this.listeners[evt] || []).push(fn); },
+  emit(evt, data) { (this.listeners[evt] || []).forEach(fn => fn(data)); }
+};
+
+// ============ ЧАСТЬ 2: ФОН ============
+const BackgroundModule = (() => {
+  const bg = document.getElementById('bg-layer');
+  let starCount = 0;
+  const MAX_STARS = 120;
+  function createNebulas() {
+    const colors = ['#ff00e5', '#00e5ff', '#9d00ff', '#00ffaa', '#ff5e00'];
+    for (let i = 0; i < 5; i++) {
+      const n = document.createElement('div');
+      n.className = 'nebula';
+      const size = 200 + Math.random() * 300;
+      n.style.width = size + 'px'; n.style.height = size + 'px';
+      n.style.left = Math.random() * 100 + '%'; n.style.top = Math.random() * 100 + '%';
+      n.style.background = colors[i % colors.length];
+      n.style.animationDelay = (Math.random() * 10) + 's';
+      n.style.animationDuration = (20 + Math.random() * 20) + 's';
+      bg.appendChild(n);
+    }
+  }
+  function createStar() {
+    if (starCount >= MAX_STARS) return;
+    const s = document.createElement('div');
+    s.className = 'star-dot';
+    const size = Math.random() * 2.5 + 0.8;
+    s.style.width = size + 'px'; s.style.height = size + 'px';
+    s.style.left = Math.random() * 100 + '%'; s.style.top = Math.random() * 100 + '%';
+    s.style.animationDelay = (Math.random() * 2) + 's';
+    s.style.animationDuration = (1.5 + Math.random() * 2) + 's';
+    bg.appendChild(s); starCount++;
+  }
+  function spawnShootingStar() {
+    const s = document.createElement('div');
+    s.className = 'shooting-star';
+    s.style.left = Math.random() * 60 + '%'; s.style.top = Math.random() * 40 + '%';
+    bg.appendChild(s); setTimeout(() => s.remove(), 1500);
+  }
+  function init() {
+    createNebulas();
+    for (let i = 0; i < MAX_STARS; i++) createStar();
+    setInterval(() => { if (Math.random() < 0.3) spawnShootingStar(); }, 4000);
+  }
+  EventBus.on('click', () => {
+    bg.style.transition = 'filter 0.15s';
+    bg.style.filter = 'brightness(1.3)';
+    setTimeout(() => bg.style.filter = 'brightness(1)', 150);
+  });
+  return { init };
+})();
+
+// ============ ЧАСТЬ 3: ЭФФЕКТЫ ============
+const EffectsModule = (() => {
+  const COLORS = ['#00e5ff', '#ff00e5', '#ffcc00', '#00ffaa', '#ff5e00', '#ffffff'];
+  const MAX = 80; let active = 0;
+  function burst(x, y, count = 12, power = 1) {
+    if (!Game.particlesOn) return;
+    for (let i = 0; i < count; i++) { if (active >= MAX) break; spawnP(x, y, power); }
+  }
+  function spawnP(x, y, power) {
+    active++;
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const size = 3 + Math.random() * 5;
+    const color = COLORS[Math.floor(Math.random() * COLORS.length)];
+    p.style.width = size + 'px'; p.style.height = size + 'px';
+    p.style.left = x + 'px'; p.style.top = y + 'px';
+    p.style.background = color;
+    p.style.boxShadow = `0 0 ${8 + Math.random() * 8}px ${color}`;
+    document.body.appendChild(p);
+    const angle = Math.random() * Math.PI * 2;
+    const speed = (60 + Math.random() * 120) * power;
+    const vx = Math.cos(angle) * speed, vy = Math.sin(angle) * speed;
+    const gravity = 220, life = 600 + Math.random() * 400;
+    const start = performance.now();
+    function anim(now) {
+      const t = (now - start) / 1000;
+      if (t * 1000 >= life) { p.remove(); active--; return; }
+      const px = vx * t, py = vy * t + 0.5 * gravity * t * t;
+      const alpha = 1 - (t * 1000 / life);
+      p.style.transform = `translate(-50%, -50%) translate(${px}px, ${py}px) scale(${alpha})`;
+      p.style.opacity = alpha;
+      requestAnimationFrame(anim);
+    }
+    requestAnimationFrame(anim);
+  }
+  function floatNumber(x, y, text, isCrit = false) {
+    const el = document.createElement('div');
+    el.className = 'float-number' + (isCrit ? ' crit' : '');
+    el.textContent = text;
+    el.style.left = x + 'px'; el.style.top = y + 'px';
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 1000);
+  }
+  function clickRing(x, y) {
+    const r = document.createElement('div');
+    r.className = 'click-ring';
+    r.style.left = x + 'px'; r.style.top = y + 'px';
+    document.body.appendChild(r); setTimeout(() => r.remove(), 600);
+  }
+  function shake() {
+    if (!Game.particlesOn) return;
+    const g = document.getElementById('game');
+    g.classList.remove('shake'); void g.offsetWidth; g.classList.add('shake');
+  }
+  EventBus.on('click', ({ x, y, amount, crit }) => {
+    burst(x, y, crit ? 24 : 12, crit ? 1.4 : 1);
+    clickRing(x, y);
+    floatNumber(x, y - 10, (crit ? '✨ +' : '+') + formatNum(amount), crit);
+    shake();
+  });
+  EventBus.on('upgrade:bought', () => {
+    const cx = window.innerWidth / 2, cy = window.innerHeight / 2;
+    burst(cx, cy, 30, 1.5);
+    floatNumber(cx, cy, '⚡ АПГРЕЙД!', true);
+  });
+  return { burst, floatNumber, clickRing, shake };
+})();
+
+// ============ ЧАСТЬ 4: HUD ============
+const HUDModule = (() => {
+  const scoreEl = document.getElementById('scoreValue');
+  const cpsEl = document.getElementById('cpsLine');
+  const barEl = document.getElementById('progressBar');
+  const barTextEl = document.getElementById('progressText');
+  const totalEl = document.getElementById('statTotal');
+  const clicksEl = document.getElementById('statClicks');
+  let displayScore = 0, clicksCount = 0;
+  const MILESTONES = [100, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 1e11, 1e12];
+  function getNext(s) { for (const m of MILESTONES) if (s < m) return m; return s * 10; }
+  function animateScore() {
+    const target = Game.score, diff = target - displayScore;
+    if (Math.abs(diff) < 0.5) displayScore = target;
+    else {
+      displayScore += diff * 0.18 + Math.sign(diff) * 0.2;
+      if ((diff > 0 && displayScore > target) || (diff < 0 && displayScore < target)) displayScore = target;
+    }
+    scoreEl.textContent = formatNum(displayScore);
+    requestAnimationFrame(animateScore);
+  }
+  function updateProgress() {
+    const next = getNext(Game.totalScore);
+    let prev = 0;
+    for (const m of MILESTONES) if (m <= Game.totalScore) prev = m;
+    const span = next - prev || 1;
+    const pct = Math.min(100, ((Game.totalScore - prev) / span) * 100);
+    barEl.style.width = pct + '%';
+    barTextEl.textContent = `${formatNum(Game.totalScore)} / ${formatNum(next)}`;
+  }
+  function updateCPS() { cpsEl.textContent = `+${formatNum(Game.cps)} / сек`; }
+  function refresh() {
+    updateCPS(); updateProgress();
+    totalEl.textContent = formatNum(Game.totalScore);
+    clicksEl.textContent = formatNum(clicksCount);
+  }
+  EventBus.on('click', () => {
+    clicksCount++;
+    scoreEl.classList.remove('bump'); void scoreEl.offsetWidth; scoreEl.classList.add('bump');
+    setTimeout(() => scoreEl.classList.remove('bump'), 120);
+    refresh();
+  });
+  EventBus.on('upgrade:bought', refresh);
+  EventBus.on('game:tick', refresh);
+  requestAnimationFrame(animateScore);
+  setTimeout(refresh, 50);
+  return { refresh, updateCPS };
+})();
+
+// ============ ЧАСТЬ 5: ПЛАНЕТА ============
+const PlanetModule = (() => {
+  const planetEl = document.getElementById('planet');
+  const comboEl = document.getElementById('comboBadge');
+  const hintEl = document.getElementById('tapHint');
+  let combo = 1, comboStreak = 0, lastClickTime = 0;
+  const COMBO_WINDOW = 900, MAX_COMBO = 5;
+  let comboTimer = null;
+  const CRIT_CHANCE = 0.08, CRIT_MULT = 5;
+  function handleClick(e) {
+    const now = performance.now();
+    if (now - lastClickTime < COMBO_WINDOW) {
+      comboStreak++;
+      if (comboStreak % 8 === 0 && combo < MAX_COMBO) combo++;
+    } else { comboStreak = 1; combo = 1; }
+    lastClickTime = now;
+    clearTimeout(comboTimer);
+    comboTimer = setTimeout(() => { combo = 1; comboStreak = 0; comboEl.classList.remove('show'); }, COMBO_WINDOW + 200);
+    if (combo > 1) {
+      comboEl.textContent = '×' + combo;
+      comboEl.classList.add('show');
+      comboEl.classList.remove('pulse'); void comboEl.offsetWidth; comboEl.classList.add('pulse');
+    }
+    const isCrit = Math.random() < CRIT_CHANCE;
+    let amount = Game.clickPower * combo;
+    if (isCrit) { amount *= CRIT_MULT; planetEl.classList.remove('crit-flash'); void planetEl.offsetWidth; planetEl.classList.add('crit-flash'); }
+    Game.score += amount; Game.totalScore += amount;
+    Game._clicks++;
+    EventBus.emit('combo:update', combo);
+    const x = e.clientX ?? window.innerWidth / 2;
+    const y = e.clientY ?? window.innerHeight / 2;
+    EventBus.emit('click', { x, y, amount, crit: isCrit });
+    if (hintEl) hintEl.style.display = 'none';
+  }
+  planetEl.addEventListener('mousedown', handleClick);
+  planetEl.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    const t = e.touches[0];
+    handleClick({ clientX: t.clientX, clientY: t.clientY });
+  }, { passive: false });
+  planetEl.addEventListener('contextmenu', e => e.preventDefault());
+  return {};
+})();
+
+// ============ ЧАСТЬ 6: МАГАЗИН ============
+const ShopModule = (() => {
+  const shopEl = document.getElementById('shop');
+  const CATALOG = [
+    { id: 'cursor',    icon: '👆', name: 'Курсор',       desc: '+1 к клику',         rarity: 'common',    baseCost: 50,     costMult: 1.6,  clickBonus: 1, cps: 0 },
+    { id: 'booster',   icon: '⚡', name: 'Ускоритель',   desc: '+1 энергии/сек',     rarity: 'common',    baseCost: 100,    costMult: 1.55, cps: 1 },
+    { id: 'drone',     icon: '🛸', name: 'Дрон-сборщик', desc: '+5 энергии/сек',     rarity: 'common',    baseCost: 600,    costMult: 1.55, cps: 5 },
+    { id: 'star',      icon: '🌟', name: 'Звездолёт',    desc: '+25 энергии/сек',    rarity: 'rare',      baseCost: 3500,   costMult: 1.6,  cps: 25 },
+    { id: 'fusion',    icon: '☢️', name: 'Реактор',      desc: '+120 энергии/сек',   rarity: 'rare',      baseCost: 20000,  costMult: 1.65, cps: 120 },
+    { id: 'planet',    icon: '🪐', name: 'Планета',      desc: '+600 энергии/сек',   rarity: 'epic',      baseCost: 120000, costMult: 1.7,  cps: 600 },
+    { id: 'galaxy',    icon: '🌌', name: 'Галактика',    desc: '+3000 энергии/сек',  rarity: 'epic',      baseCost: 800000, costMult: 1.75, cps: 3000 },
+    { id: 'blackhole', icon: '🕳️', name: 'Чёрная дыра', desc: '+15000 энергии/сек', rarity: 'legendary', baseCost: 6000000, costMult: 1.8, cps: 15000 },
+  ];
+  CATALOG.forEach(u => Game.upgrades.push({ ...u, owned: 0 }));
+  function getUpgrade(id) { return Game.upgrades.find(u => u.id === id); }
+  function getCost(u) { return Math.floor(u.baseCost * Math.pow(u.costMult, u.owned)); }
+  function renderCard(u) {
+    const cost = getCost(u);
+    const can = Game.score >= cost;
+    const c = document.createElement('div');
+    c.className = 'upg-card ' + (can ? 'affordable' : 'locked');
+    c.dataset.rarity = u.rarity; c.dataset.id = u.id;
+    c.innerHTML = `
+      <div class="upg-icon">${u.icon}</div>
+      <div class="upg-info">
+        <div class="upg-name">${u.name}${u.owned > 0 ? ` <span class="upg-owned">×${u.owned}</span>` : ''}</div>
+        <div class="upg-desc">${u.desc}</div>
+      </div>
+      <div class="upg-price ${can ? '' : 'cant'}">${formatNum(cost)}</div>
+    `;
+    c.addEventListener('click', () => buy(u.id));
+    return c;
+  }
+  function buy(id) {
+    const u = getUpgrade(id), cost = getCost(u);
+    if (Game.score < cost) return;
+    Game.score -= cost; u.owned++;
+    if (u.cps) Game.cps += u.cps;
+    if (u.clickBonus) Game.clickPower += u.clickBonus;
+    const c = document.querySelector(`.upg-card[data-id="${id}"]`);
+    if (c) { c.classList.add('bought-flash'); setTimeout(() => c.classList.remove('bought-flash'), 400); }
+    EventBus.emit('upgrade:bought', { id, upg: u });
+    renderAll();
+  }
+  function renderAll() {
+    const pos = shopEl.scrollTop;
+    shopEl.querySelectorAll('.upg-card').forEach(e => e.remove());
+    Game.upgrades.forEach(u => shopEl.appendChild(renderCard(u)));
+    shopEl.scrollTop = pos;
+  }
+  function updateAffordability() {
+    document.querySelectorAll('.upg-card').forEach(c => {
+      const u = getUpgrade(c.dataset.id);
+      const cost = getCost(u), can = Game.score >= cost;
+      const p = c.querySelector('.upg-price');
+      c.classList.toggle('affordable', can); c.classList.toggle('locked', !can);
+      p.classList.toggle('cant', !can); p.textContent = formatNum(cost);
+    });
+  }
+  EventBus.on('game:tick', updateAffordability);
+  EventBus.on('click', updateAffordability);
+  setTimeout(renderAll, 60);
+  return { renderAll, updateAffordability };
+})();
+
+// ============ ЧАСТЬ 7: ДОСТИЖЕНИЯ ============
+const AchievementsModule = (() => {
+  const toastEl = document.getElementById('achToast');
+  const toastName = document.getElementById('achToastName');
+  const counterEl = document.getElementById('achCounter');
+  const LIST = [
+    { id: 'c1',  icon: '👆', name: 'Первый контакт',  check: g => g._clicks >= 1,     reward: 10 },
+    { id: 'c2',  icon: '💯', name: 'Сотка кликов',     check: g => g._clicks >= 100,   reward: 200 },
+    { id: 'c3',  icon: '🔥', name: 'Тысячник',         check: g => g._clicks >= 1000,  reward: 2000 },
+    { id: 's1',  icon: '⭐', name: 'Тысяча энергии',   check: g => g.totalScore >= 1e3, reward: 100 },
+    { id: 's2',  icon: '🌟', name: 'Сто тысяч',        check: g => g.totalScore >= 1e5, reward: 5000 },
+    { id: 's3',  icon: '💎', name: 'Миллион!',         check: g => g.totalScore >= 1e6, reward: 50000 },
+    { id: 's4',  icon: '👑', name: 'Миллиардер',       check: g => g.totalScore >= 1e9, reward: 5e6 },
+    { id: 'u1',  icon: '🛠️', name: 'Инженер',          check: g => g.upgrades.some(u => u.owned > 0), reward: 100 },
+    { id: 'u2',  icon: '🎯', name: 'Коллекционер',     check: g => g.upgrades.every(u => u.owned > 0), reward: 100000, bonus: 1.1 },
+    { id: 'p1',  icon: '⚡', name: 'Электростанция',   check: g => g.cps >= 10,       reward: 300 },
+    { id: 'p2',  icon: '🌩️', name: 'Энергогигант',     check: g => g.cps >= 1000,     reward: 50000, bonus: 1.05 },
+    { id: 'cb',  icon: '💥', name: 'Комбо-мастер',     check: g => g._maxCombo >= 5,  reward: 5000, bonus: 1.05 },
+  ];
+  const unlocked = new Set();
+  const queue = []; let busy = false;
+  EventBus.on('combo:update', c => { if (c > Game._maxCombo) Game._maxCombo = c; });
+  function enqueue(a) { queue.push(a); process(); }
+  function process() {
+    if (busy || !queue.length) return;
+    busy = true;
+    const a = queue.shift();
+    toastEl.querySelector('.toast-icon').textContent = a.icon;
+    toastName.textContent = a.name;
+    toastEl.classList.add('show');
+    setTimeout(() => {
+      toastEl.classList.remove('show');
+      setTimeout(() => { busy = false; process(); }, 500);
+    }, 2200);
+  }
+  function check() {
+    let changed = false;
+    LIST.forEach(a => {
+      if (unlocked.has(a.id) || !a.check(Game)) return;
+      unlocked.add(a.id); changed = true;
+      if (a.reward) { Game.score += a.reward; Game.totalScore += a.reward; }
+      if (a.bonus) Game.cps = Math.floor(Game.cps * a.bonus);
+      enqueue(a);
+    });
+    if (changed) counterEl.textContent = `🏆 ${unlocked.size}/${LIST.length}`;
+  }
+  setInterval(check, 1000);
+  EventBus.on('game:tick', check);
+  EventBus.on('click', check);
+  EventBus.on('upgrade:bought', check);
+  return { check };
+})();
+
+// ============ ЭКОНОМИКА (мини-часть для тика) ============
+setInterval(() => {
+  if (Game.cps > 0) {
+    Game.score += Game.cps;
+    Game.totalScore += Game.cps;
+  }
+  EventBus.emit('game:tick', { score: Game.score, cps: Game.cps });
+}, 1000);
+
+// ============ СТАРТ ============
+setTimeout(() => {
+  BackgroundModule.init();
+  console.log('🚀 Космо-Кликер запущен');
+}, 100);
+</script>
+</body>
+</html>
