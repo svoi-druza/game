@@ -528,13 +528,15 @@ setTimeout(() => {
 }, 100);
   // Логика кнопки доната
 document.getElementById('donateBtn').addEventListener('click', () => {
+  console.log("Объект Telegram:", window.Telegram);
+alert("Telegram: " + (window.Telegram ? "Есть!" : "Нет!"));
   const tg = window.Telegram?.WebApp;
-  if (!tg || !tg.initDataUnsafe?.user) {
-    alert('Пожалуйста, откройте игру через Telegram!');
+ if (!tg) {
+    alert('Telegram WebApp не найден. Откройте игру через кнопку меню бота.');
     return;
-  }
+}
 
-  const userId = tg.initDataUnsafe.user.id;
+  const userId = tg.initDataUnsafe?.user?.id || 0; // Берем ID, если есть, иначе 0
 
   fetch('https://cosmo-bot-hml.onrender.com/api/buy', {
     method: 'POST',
