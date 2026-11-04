@@ -531,7 +531,19 @@ setTimeout(() => {
   // Логика кнопки доната
 document.getElementById('donateBtn').addEventListener('click', () => {
   console.log("Объект Telegram:", window.Telegram);
-alert("Telegram: " + (window.Telegram ? "Есть!" : "Нет!"));
+// ДИАГНОСТИКА
+let diagText = "Telegram: " + (window.Telegram ? "Есть" : "Нет") + "\n";
+if (window.Telegram && window.Telegram.WebApp) {
+    const tg = window.Telegram.WebApp;
+    diagText += "WebApp: Есть\n";
+    diagText += "initData: " + (tg.initData ? "Есть" : "Пусто") + "\n";
+    diagText += "User: " + (tg.initDataUnsafe?.user ? "Есть" : "Нет") + "\n";
+    diagText += "Version: " + tg.version + "\n";
+    diagText += "Platform: " + tg.platform;
+} else {
+    diagText += "WebApp: НЕТ (скрипт не загрузился)";
+}
+alert(diagText);
   const tg = window.Telegram?.WebApp;
  if (!tg) {
     alert('Telegram WebApp не найден. Откройте игру через кнопку меню бота.');
