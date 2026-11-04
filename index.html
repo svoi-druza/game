@@ -385,7 +385,10 @@ const ShopModule = (() => {
     { id: 'galaxy',    icon: '🌌', name: 'Галактика',    desc: '+3000 энергии/сек',  rarity: 'epic',      baseCost: 800000, costMult: 1.75, cps: 3000 },
     { id: 'blackhole', icon: '🕳️', name: 'Чёрная дыра', desc: '+15000 энергии/сек', rarity: 'legendary', baseCost: 6000000, costMult: 1.8, cps: 15000 },
   ];
-  CATALOG.forEach(u => Game.upgrades.push({ ...u, owned: 0 }));
+    // Защита от дублирования при загрузке
+  if (Game.upgrades.length === 0) {
+    CATALOG.forEach(u => Game.upgrades.push({ ...u, owned: 0 }));
+  }
   function getUpgrade(id) { return Game.upgrades.find(u => u.id === id); }
   function getCost(u) { return Math.floor(u.baseCost * Math.pow(u.costMult, u.owned)); }
   function renderCard(u) {
