@@ -125,6 +125,9 @@ html, body { height: 100%; overflow: hidden; font-family: 'Segoe UI', system-ui,
       <div id="tapHint">▼ ТАПАЙ ▼</div>
     </div>
     <div id="shop">
+      <button id="donateBtn" style="background: gold; color: black; font-weight: bold; padding: 12px; border-radius: 12px; margin-bottom: 10px; width: 100%; border: none; cursor: pointer;">
+  💎 Купить 500 кристаллов (50 ⭐)
+</button>
       <div class="shop-title">⚡ Апгрейды</div>
     </div>
   </div>
@@ -522,6 +525,31 @@ setTimeout(() => {
   BackgroundModule.init();
   console.log('🚀 Космо-Кликер запущен');
 }, 100);
+  // Логика кнопки доната
+document.getElementById('donateBtn').addEventListener('click', () => {
+  const tg = window.Telegram?.WebApp;
+  if (!tg || !tg.initDataUnsafe?.user) {
+    alert('Пожалуйста, откройте игру через Telegram!');
+    return;
+  }
+
+  const userId = tg.initDataUnsafe.user.id;
+
+  fetch('https://cosmo-bot-hml.onrender.com/api/buy', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId: userId })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.ok) {
+      tg.showAlert('Счет выставлен! Проверьте чат с ботом.');
+    } else {
+      tg.showAlert('Ошибка: ' + data.description);
+    }
+  })
+  .catch(() => tg.showAlert('Ошибка сервера. Попробуйте позже.'));
+});
 </script>
 </body>
 </html>
