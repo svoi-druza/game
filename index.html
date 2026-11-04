@@ -138,6 +138,14 @@ html, body { height: 100%; overflow: hidden; font-family: 'Segoe UI', system-ui,
 <script>
 // ============ ЯДРО ============
 const Game = { score: 0, totalScore: 0, clickPower: 1, cps: 0, upgrades: [], achievements: [], soundOn: true, particlesOn: true, initialized: false, _clicks: 0, _maxCombo: 1 };
+  // Загрузка сохранения при старте
+const savedGame = localStorage.getItem('cosmoSave');
+if (savedGame) {
+  try {
+    const parsed = JSON.parse(savedGame);
+    Object.assign(Game, parsed);
+  } catch (e) { console.log('Ошибка загрузки'); }
+}
 
 function formatNum(n) {
   if (n >= 1e15) return (n/1e15).toFixed(2) + 'Qa';
@@ -489,7 +497,19 @@ setInterval(() => {
     Game.totalScore += Game.cps;
   }
   EventBus.emit('game:tick', { score: Game.score, cps: Game.cps });
-}, 1000);
+  
+  // Автосохранение
+  localStorage.setItem('cosmoSave', JSON.stringify({
+    score: Game.score,
+    totalScore: Game.totalScore,
+    clickPower: Game.clickPower,
+    cps: Game.cps,
+    upgrades: Game.upgrades,
+    _clicks: Game._clicks,
+    _maxCombo: Game._maxCombo
+  }));
+
+}, 1000); // <--- вот эта скобка должна остаться в самом низу
 
 // ============ СТАРТ ============
 setTimeout(() => {
