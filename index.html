@@ -541,7 +541,6 @@ document.getElementById('donateBtn').addEventListener('click', () => {
   const userData = tg.initDataUnsafe?.user;
   
   if (userData) {
-    alert('УСПЕХ! Ваш ID: ' + userData.id);
   } else {
     alert('Telegram есть, но данные пользователя пустые!');
     return;
